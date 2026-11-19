@@ -40257,13 +40257,18 @@ const walletProfiles = (() => {
     }
     function prepare(character) {
         const previous = character.peekData?.wallet;
-        if (!previous) return;
+        if (!previous || typeof previous !== 'object') return;
+        const prevAccounts = Array.isArray(previous.accounts) ? previous.accounts : [];
+        const prevBills = Array.isArray(previous.bills) ? previous.bills : [];
+        const prevPending = Array.isArray(previous.pending) ? previous.pending : [];
         // Older installs seeded a sample ledger before the first AI request.
         const untouchedSample = previous.version === 2 && previous.profileKeys?.length && !previous.updatedAt
-            && previous.bills.length && previous.bills.every(bill => bill.simulated === true && bill.id.startsWith('sim-'));
-        if (untouchedSample || (!previous.accounts.length && !previous.bills.length && !previous.pending?.length)) return;
+            && prevBills.length && prevBills.every(bill => bill.simulated === true && bill.id?.startsWith('sim-'));
+        if (untouchedSample || (!prevAccounts.length && !prevBills.length && !prevPending.length)) return;
         if (previous.version >= 2) return previous;
         const wallet = structuredClone(previous);
+        wallet.accounts = Array.isArray(wallet.accounts) ? wallet.accounts : [];
+        wallet.bills = Array.isArray(wallet.bills) ? wallet.bills : [];
         for (const account of wallet.accounts) {
             account.currency ||= 'CNY';
             if (account.kind === 'card') {
@@ -41161,10 +41166,10 @@ transactions 只记对话明确已发生、属于该角色且金额和入扣账�
         if (!wallet || character.peekScreenSettings?.walletInChat !== true) return '';
         const latest = history.filter(message => message.role === 'user').at(-1);
         if (!/钱包|余额|银行卡|账单|消费|开销|花了|付款|转账|存款|多少钱|支出|收入|买了|wallet|balance|spen[dt]|payment|transactions?/i.test(memoryBatch.messageText(latest))) return '';
-        const accounts = wallet.accounts.map(account =>
+        const accounts = (Array.isArray(wallet.accounts) ? wallet.accounts : []).map(account =>
             `${peekWalletView.accountName(account, 'zh')} ${account.currency || 'CNY'} ${formatMoney(account.cents, account.currency)}`).join('，');
-        const latestIds = new Set(wallet.latestBillIds);
-        const bills = wallet.bills.slice(-30).filter(bill => latestIds.has(bill.id)).slice(-3)
+        const latestIds = new Set(Array.isArray(wallet.latestBillIds) ? wallet.latestBillIds : []);
+        const bills = (Array.isArray(wallet.bills) ? wallet.bills : []).slice(-30).filter(bill => latestIds.has(bill.id)).slice(-3)
             .map(bill => billSummary(bill, wallet)).join('；');
         return `\n【本轮私聊可参考的角色钱包】虚构快照，仅在相关时自然回应。账户：${accounts}${bills ? `。最近一次同步的流水：${bills}` : ''}。\n`;
     }
