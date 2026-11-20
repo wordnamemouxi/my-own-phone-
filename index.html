@@ -14791,10 +14791,14 @@ textarea.mp-transparent-input {
                             <div class="kkt-item">
                                 <label class="kkt-item-title" for="memory-api-model">记忆 API 模型</label>
                                 <div class="kkt-item-control">
-                                    <input id="memory-api-model" type="text" list="memory-api-models" autocomplete="off" placeholder="填写模型 ID">
+                                    <input id="memory-api-model" type="text" list="memory-api-models" autocomplete="off" placeholder="填写或下方选择模型 ID">
                                     <datalist id="memory-api-models"></datalist>
                                     <button type="button" id="memory-fetch-models-btn" class="btn btn-secondary">拉取</button>
                                 </div>
+                            </div>
+                            <div class="kkt-item" id="memory-api-model-select-row" hidden>
+                                <label class="kkt-item-title" for="memory-api-model-select">选择已拉取模型</label>
+                                <select id="memory-api-model-select"></select>
                             </div>
                         </div>
                         <div class="kkt-item">
@@ -37228,6 +37232,8 @@ function setupMemoryApiSettings() {
     const key = document.getElementById('memory-api-key');
     const model = document.getElementById('memory-api-model');
     const options = document.getElementById('memory-api-models');
+    const modelSelectRow = document.getElementById('memory-api-model-select-row');
+    const modelSelect = document.getElementById('memory-api-model-select');
     const fetchButton = document.getElementById('memory-fetch-models-btn');
     const save = document.getElementById('memory-save-api-btn');
     const config = db.apiSettings?.memoryOrganizer;
@@ -37250,10 +37256,20 @@ function setupMemoryApiSettings() {
     const updatePanel = () => { panel.hidden = !enabled.checked; };
     updatePanel();
     enabled.addEventListener('change', updatePanel);
+    modelSelect.addEventListener('change', () => {
+        if (modelSelect.value) model.value = modelSelect.value;
+    });
+    model.addEventListener('input', () => {
+        if (Array.from(modelSelect.options).some(opt => opt.value === model.value.trim())) {
+            modelSelect.value = model.value.trim();
+        }
+    });
     provider.addEventListener('change', () => {
         url.value = { gemini: 'https://generativelanguage.googleapis.com', deepseek: 'https://api.deepseek.com' }[provider.value] || '';
         model.value = '';
         options.replaceChildren();
+        modelSelect.replaceChildren();
+        modelSelectRow.hidden = true;
     });
 
     save.addEventListener('click', async () => {
@@ -37294,11 +37310,23 @@ function setupMemoryApiSettings() {
             const response = await fetch(endpoint, { headers: gemini ? {} : { Authorization: request.headers.Authorization } });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            const models = gemini ? (data.models || []).map(item => item.name?.replace(/^models\//, ''))
-                : (data.data || []).map(item => item.id);
-            options.replaceChildren(...models.filter(Boolean).map(value => new Option(value, value)));
-            if (!model.value && models.length === 1) model.value = models[0];
-            showToast(models.length ? '记忆 API 模型列表已更新' : '未取得模型列表，可以手动填写模型 ID');
+            const models = [...new Set((gemini ? (data.models || []).map(item => item.name?.replace(/^models\//, ''))
+                : (data.data || []).map(item => item.id)).filter(Boolean))];
+            options.replaceChildren(...models.map(value => new Option(value, value)));
+            if (models.length) {
+                modelSelect.replaceChildren(new Option(`请选择模型（共 ${models.length} 个）`, ''), ...models.map(value => new Option(value, value)));
+                if (model.value && models.includes(model.value.trim())) {
+                    modelSelect.value = model.value.trim();
+                } else if (!model.value.trim()) {
+                    model.value = models[0];
+                    modelSelect.value = models[0];
+                }
+                modelSelectRow.hidden = false;
+            } else {
+                modelSelect.replaceChildren();
+                modelSelectRow.hidden = true;
+            }
+            showToast(models.length ? `已拉取 ${models.length} 个模型，请直接在下方下拉框选择` : '未取得模型列表，可以手动填写模型 ID');
         } catch {
             showToast('模型列表拉取失败，可以手动填写模型 ID');
         } finally {
