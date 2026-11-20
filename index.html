@@ -11212,6 +11212,18 @@ input:checked + .kkt-slider:before {
 
 .uwu-memory-timeline { list-style: none; padding-inline-start: 12px; }
 .uwu-memory-timeline li { position: relative; border-inline-start: 2px solid #80708e; padding: 0 0 16px 15px; }
+.uwu-memory-timeline li.is-clickable { cursor: pointer; border-radius: 8px; transition: background-color .15s; }
+.uwu-memory-timeline li.is-clickable:hover { background: rgba(128, 112, 142, .08); }
+.uwu-memory-linked-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 6px; align-items: center; }
+.uwu-memory-linked-chip { font-size: .78rem; padding: 3px 9px; border-radius: 999px; border: 1px solid #d5cddc; background: #f7f4fa; color: #473d52; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uwu-memory-linked-chip:hover { background: #ebe4f2; }
+.uwu-memory-link-picker { border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-block: 10px; background: #fafafa; }
+.uwu-memory-link-picker-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: .88rem; font-weight: 600; }
+.uwu-memory-link-picker input[type="search"] { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
+.uwu-memory-link-picker-list { max-height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.uwu-memory-link-picker-item { display: flex !important; align-items: center; gap: 8px; padding: 5px 6px; margin: 0 !important; border-radius: 6px; cursor: pointer; font-size: .86rem; background: #fff; border: 1px solid #eee; }
+.uwu-memory-link-picker-item.is-selected { background: #f2edf7; border-color: #b7a6c9; }
+.uwu-memory-link-picker-item input[type="checkbox"] { flex: 0 0 auto; width: auto !important; }
 .uwu-memory-timeline li::before {
     content: "";
     position: absolute;
@@ -19375,8 +19387,12 @@ const memoryRepository = (() => {
             for (const hit of hits) {
                 await dexieDB.memoryEntries.where('id').equals(hit.entry.id)
                     .filter(entry => entry.characterId === characterId).modify(entry => {
-                        entry.recallCount++;
-                        if (hit.explicit) entry.lastRecalledAt = now;
+                        entry.recallCount = (entry.recallCount || 0) + 1;
+                        entry.lastRecalledAt = now;
+                        if (entry.kind === 'event' && !entry.pinned && !entry.permanent) {
+                            const currentStrength = Number.isFinite(entry.baseStrength) ? entry.baseStrength : 0.5;
+                            entry.baseStrength = Math.min(0.98, Number((currentStrength + 0.04).toFixed(2)));
+                        }
                     });
             }
         });
@@ -20117,7 +20133,7 @@ const memoryEngine = (() => {
 
     async function retrieve(character, history, options = {}) {
         const now = options.now ?? Date.now();
-        const windowSize = Math.max(1, Math.min(20, Number(options.recentWindow) || 4));
+        const windowSize = Math.max(1, Math.trunc(Number(options.recentWindow) || 4));
         const [entries, cues] = await Promise.all([
             memoryRepository.listForArchive(character.id, character.activeArchiveId),
             cuesFor(character, history, windowSize)
@@ -20163,7 +20179,35 @@ const memoryEngine = (() => {
                     ? [...terms.values()].map(term => `关键词「${term}」`)
                     : ['本地文本相似'] } : {}) });
         }
-        return results.sort((left, right) => right.score - left.score || right.entry.updatedAt - left.entry.updatedAt);
+        results.sort((left, right) => right.score - left.score || right.entry.updatedAt - left.entry.updatedAt);
+        // 1-hop associative recall: surface linked memories of top direct hits
+        const byId = new Map(entries.map(entry => [entry.id, entry]));
+        const seenIds = new Set(results.map(hit => hit.entry.id));
+        const seeds = results.filter(hit => hit.entry.kind !== 'code' && hit.entry.recallClass !== 'evolution').slice(0, 3);
+        const linkedHits = [];
+        for (const seed of seeds) {
+            const links = Array.isArray(seed.entry.linkedEntryIds) ? seed.entry.linkedEntryIds : [];
+            for (const targetId of links) {
+                if (seenIds.has(targetId)) continue;
+                const linked = byId.get(targetId);
+                if (!linked || !usable(linked, now) || linked.kind === 'code') continue;
+                const linkedStrength = clarity(linked, now, options.style);
+                if (linked.kind === 'event' && linkedStrength < 0.25 && linked.recallClass === 'ordinary') continue;
+                seenIds.add(targetId);
+                linkedHits.push({
+                    entry: linked,
+                    clarity: linkedStrength,
+                    explicit: false,
+                    score: Math.max(1.2, seed.score * 0.65) + linked.importance * 0.3,
+                    ...(options.debug ? { reasons: [`由「${seed.entry.title}」联想触发`] } : {})
+                });
+            }
+        }
+        if (linkedHits.length) {
+            results.push(...linkedHits);
+            results.sort((left, right) => right.score - left.score || right.entry.updatedAt - left.entry.updatedAt);
+        }
+        return results;
     }
 
     function grams(text) {
@@ -20222,7 +20266,7 @@ const memoryEngine = (() => {
 const memoryViews = (() => {
     const { element, button } = memoryZipUi;
 
-    async function timeline(pane, characterId, archiveId, version) {
+    async function timeline(pane, characterId, archiveId, version, onSelect) {
         const before = version();
         pane.replaceChildren();
         const entries = await memoryRepository.listForArchive(characterId, archiveId, 'event');
@@ -20233,13 +20277,17 @@ const memoryViews = (() => {
         const date = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { dateStyle: 'long', timeZone: 'UTC' });
         const list = element('ol', undefined, { className: 'uwu-memory-timeline' });
         for (const entry of [...dated, ...undated]) {
-            const point = element('li');
+            const point = element('li', undefined, { className: onSelect ? 'is-clickable' : '' });
             const timestamp = entry.eventAt;
             const dateLabel = timestamp === null ? element('span', '日期待补充', { className: 'uwu-memory-date' })
                 : element('time', date.format(timestamp), { dateTime: new Date(timestamp).toISOString().slice(0, 10),
                     className: 'uwu-memory-date' });
             point.append(dateLabel, element('strong', entry.title));
             if (entry.summary) point.append(element('p', entry.summary));
+            if (onSelect) {
+                point.title = '点击编辑此条记忆';
+                point.addEventListener('click', () => onSelect(entry));
+            }
             list.append(point);
         }
         pane.append(entries.length ? list : element('p', '暂无情景记忆'));
@@ -20666,18 +20714,56 @@ const memoryManagement = (() => {
             input('summary', '简短摘要', 'textarea');
             input('details', '细节', 'textarea');
             input('enabled', '允许检索与整理引用', 'checkbox', true);
-            input('eventAt', '事件日期', 'date');
+            const todayLocal = (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })();
+            input('eventAt', '事件日期', 'date', existing ? '' : todayLocal);
             const importance = input('importance', '重要程度（0–1）', 'number', 0.5);
             Object.assign(importance, { step: '0.05', min: '0', max: '1', required: true });
         }
-        const linked = element('select', undefined, { multiple: true, size: 4 });
-        form.append(field('关联记忆（可多选）', linked));
-        memoryRepository.list(characterId).then(entries => {
-            for (const entry of entries.filter(entry => entry.id !== existing?.id)) {
-                linked.add(element('option', entry.title, {
-                    value: entry.id, selected: existing?.linkedEntryIds.includes(entry.id) ?? false
-                }));
+        const selectedLinks = new Set(existing?.linkedEntryIds ?? []);
+        const linkPicker = element('div', undefined, { className: 'uwu-memory-link-picker' });
+        const linkHead = element('div', undefined, { className: 'uwu-memory-link-picker-head' });
+        const linkCount = element('span', `已选 ${selectedLinks.size} 条`);
+        linkHead.append(element('span', '关联记忆（可搜索勾选）'), linkCount);
+        const linkSearch = element('input', undefined, { type: 'search', placeholder: '输入标题或关键词筛选关联记忆…' });
+        const linkList = element('div', undefined, { className: 'uwu-memory-link-picker-list' });
+        linkPicker.append(linkHead, linkSearch, linkList);
+        form.append(linkPicker);
+        let linkCandidates = [];
+        const renderLinkPicker = () => {
+            const q = linkSearch.value.trim().toLowerCase();
+            linkCount.textContent = `已选 ${selectedLinks.size} 条`;
+            const filtered = linkCandidates.filter(entry =>
+                !q || entry.title.toLowerCase().includes(q)
+                || (entry.keywords || []).some(k => k.toLowerCase().includes(q))
+                || (entry.summary || '').toLowerCase().includes(q)
+            ).sort((a, b) => Number(selectedLinks.has(b.id)) - Number(selectedLinks.has(a.id)));
+            linkList.replaceChildren();
+            if (!filtered.length) {
+                linkList.append(element('span', '没有匹配的记忆', { style: 'font-size:.82rem;color:#888;padding:4px;' }));
+                return;
             }
+            for (const entry of filtered) {
+                const checked = selectedLinks.has(entry.id);
+                const row = element('label', undefined, { className: `uwu-memory-link-picker-item${checked ? ' is-selected' : ''}` });
+                const cb = element('input', undefined, { type: 'checkbox', checked });
+                cb.addEventListener('change', () => {
+                    if (cb.checked) selectedLinks.add(entry.id);
+                    else selectedLinks.delete(entry.id);
+                    row.classList.toggle('is-selected', cb.checked);
+                    linkCount.textContent = `已选 ${selectedLinks.size} 条`;
+                });
+                const dateTag = entry.eventAt ? ` (${new Date(entry.eventAt).toLocaleDateString()})` : '';
+                row.append(cb, element('span', `${entry.title}${dateTag}`));
+                linkList.append(row);
+            }
+        };
+        linkSearch.addEventListener('input', renderLinkPicker);
+        memoryRepository.list(characterId).then(entries => {
+            linkCandidates = entries.filter(entry => entry.id !== existing?.id);
+            renderLinkPicker();
         }).catch(error => { status.textContent = error.message; });
         const save = element('button', '保存', { type: 'submit', className: 'btn btn-primary' });
         form.append(save, status);
@@ -20688,7 +20774,7 @@ const memoryManagement = (() => {
             const value = key => controls[key].value;
             const date = key => value(key) ? Date.parse(value(key)) : null;
             const record = { kind, title: value('title'), keywords: split(value('keywords')),
-                pinned: controls.pinned.checked, archiveId: value('archiveId') || null, linkedEntryIds: Array.from(linked.selectedOptions, option => option.value) };
+                pinned: controls.pinned.checked, archiveId: value('archiveId') || null, linkedEntryIds: [...selectedLinks] };
             try {
                 if (kind === 'code') {
                     const keepTriggers = existing?.triggers.filter(trigger => !['text', 'stickerId'].includes(trigger.kind)) ?? [];
@@ -20775,8 +20861,9 @@ const memoryManagement = (() => {
             const archives = select({ current: '当前存档可用', all: '全部存档' }, 'current');
             archives.setAttribute('aria-label', '按存档筛选记忆');
             const list = element('div');
-            const items = await memoryRepository.list(characterId, codes ? 'code' : undefined);
-            const entries = items.filter(entry => codes || entry.kind !== 'code');
+            const allEntriesList = await memoryRepository.list(characterId);
+            const allEntriesById = new Map(allEntriesList.map(entry => [entry.id, entry]));
+            const entries = allEntriesList.filter(entry => codes ? entry.kind === 'code' : entry.kind !== 'code');
             const assets = codes ? (await memoryRepository.getPackExport(characterId, entries.map(entry => entry.id))).assets : [];
             if (!isOpen() || generation !== version) return;
             const thumbnails = new Map();
@@ -20826,6 +20913,18 @@ const memoryManagement = (() => {
                             || (String(entry.source ?? '').startsWith('peek-wallet:') ? '角色钱包' : '导入');
                         details.append(element('summary', '详情'), element('p', `来源 ${source} · 重要程度 ${entry.importance} · 回忆时${clarity}`));
                         card.append(details);
+                    }
+                    if (Array.isArray(entry.linkedEntryIds) && entry.linkedEntryIds.length) {
+                        const chips = element('div', undefined, { className: 'uwu-memory-linked-chips' });
+                        chips.append(element('span', '关联：', { style: 'font-size:.78rem;color:#666;' }));
+                        for (const lid of entry.linkedEntryIds.slice(0, 6)) {
+                            const target = allEntriesById.get(lid);
+                            if (!target) continue;
+                            const chip = element('button', target.title, { type: 'button', className: 'uwu-memory-linked-chip', title: '点击跳转编辑该关联记忆' });
+                            chip.addEventListener('click', () => edit(character, target.kind, target, refresh));
+                            chips.append(chip);
+                        }
+                        if (chips.children.length > 1) card.append(chips);
                     }
                     card.append(button('编辑', () => edit(character, entry.kind, entry, refresh)));
                     if (entry.sourceMessageIds.length) {
@@ -21201,7 +21300,10 @@ const memoryManagement = (() => {
             }
 
             function number(parent, key, label, min, max, description) {
-                controls[key] = element('input', undefined, { type: 'number', value: config[key], min, max, step: 1, required: true });
+                const attrs = { type: 'number', value: config[key], step: 1, required: true };
+                if (min !== null && min !== undefined) attrs.min = min;
+                if (max !== null && max !== undefined) attrs.max = max;
+                controls[key] = element('input', undefined, attrs);
                 setting(parent, key, label, controls[key], description);
             }
 
@@ -21215,20 +21317,13 @@ const memoryManagement = (() => {
             const promptRow = field('整理提示词', controls.organizeStylePrompt);
             promptRow.className = 'uwu-memory-style-prompt';
             form.append(promptRow, help, advanced);
-            number(use, 'maxEntries', '每轮最多发送几条记忆', 1, 3,
-                '只限制普通记忆，默认 3 条。命中的重要约定、核心设定和暗号各按原规则发送，仍受 Token 上限约束。');
-            number(use, 'tokenBudget', '记忆 Token 上限', 0, 1200,
-                '控制发给 AI 的记忆文字量。填 0 不限长度，仍受上面的条数限制。其他可填 50–1200，默认 300。');
-            const budgetInput = controls.tokenBudget;
-            const checkBudget = () => {
-                const amount = budgetInput.valueAsNumber;
-                budgetInput.setCustomValidity(amount > 0 && amount < 50 ? '填 0，或填 50–1200 之间的整数。' : '');
-            };
-            budgetInput.addEventListener('input', checkBudget);
-            checkBudget();
+            number(use, 'maxEntries', '每轮最多发送几条记忆', 0, null,
+                '控制每轮最多发送几条普通记忆（填 0 不限条数，填任意正整数即按该数量发送）。命中的重要约定、核心设定、成长变化和暗号单独发送。');
+            number(use, 'tokenBudget', '记忆 Token 上限', 0, null,
+                '控制发给 AI 的记忆文字量。填 0 完全不限长度，也可填任意正整数（不设上限）。');
             advanced.addEventListener('invalid', () => { advanced.open = true; }, true);
-            number(use, 'recentWindow', '找记忆时参考几条近期消息', 1, 20,
-                '用最近几条你发过的消息当线索。问「还记得上次吗」时，也会往前看。默认 4 条。');
+            number(use, 'recentWindow', '找记忆时参考几条近期消息', 1, null,
+                '用最近几条你发过的消息当线索（不设上限，填多少就参考多少条）。');
             controls.recallStyle = select({ auto: '跟随角色设定', balanced: '均衡',
                 fuzzy: '偏模糊', sharp: '偏清晰' }, config.recallStyle);
             const clarity = setting(use, 'recallStyle', '回忆的清晰度', controls.recallStyle,
@@ -21245,12 +21340,12 @@ const memoryManagement = (() => {
             toggle(use, 'similarImages', '相似图片也能触发暗号', '在本机比对图片。图片缩放或换了格式，仍有机会触发暗号。');
             toggle(use, 'callMemory', '通话时也使用长期记忆', '开启后，语音和视频通话也可以用这个角色的记忆。');
             toggle(use, 'legacyJournalInjection', '聊天时也发送收藏的日记', '同时把收藏的日记发给聊天模型，可能增加请求长度。');
-            number(organize, 'batchSize', '每次整理几条聊天消息', 10, 50,
-                '自动整理要等新消息达到这个数量。手动点「接着上次整理」也用这个数量。默认 30 条。');
-            number(organize, 'autoIntervalMinutes', '自动整理间隔（分钟）', 5, 120,
-                '两次自动整理请求至少要隔多久。手动整理随时可以发起。默认 5 分钟。');
-            number(organize, 'batchMaxCandidates', '每次最多提议几条记忆', 1, 5,
-                '控制 AI 给出的待确认条数。AI 可以少提，最后由你选哪些要保存。默认 5 条。');
+            number(organize, 'batchSize', '每次整理几条聊天消息', 1, null,
+                '自动整理要等新消息达到这个数量，手动点「接着上次整理」也用这个数量（不设上限，填多少就整理多少条）。');
+            number(organize, 'autoIntervalMinutes', '自动整理间隔（分钟）', 0, null,
+                '两次自动整理请求至少要隔多久（填 0 不限间隔，可填任意非负整数）。手动整理随时可以发起。');
+            number(organize, 'batchMaxCandidates', '每次最多提议几条记忆', 1, null,
+                '控制 AI 单次最多提议几条待确认记忆（不设上限，填多少就是多少）。');
             toggle(inspect, 'debug', '显示记忆调试信息', '开启后再发一条消息，就能在本页看哪些记忆被发送、哪些被跳过。');
             const save = element('button', '保存设置', { type: 'submit', className: 'btn btn-primary' });
             form.append(save);
@@ -21305,7 +21400,7 @@ const memoryManagement = (() => {
             generation++;
             releaseImages();
             if (selectedTab === 'transfer') transfer();
-            else if (selectedTab === 'timeline') memoryViews.timeline(pane, characterId, character.activeArchiveId, () => generation).catch(onError);
+            else if (selectedTab === 'timeline') memoryViews.timeline(pane, characterId, character.activeArchiveId, () => generation, entry => edit(character, entry.kind, entry, refresh)).catch(onError);
             else if (selectedTab === 'relations') memoryViews.relations(pane, characterId, character.activeArchiveId, () => generation).catch(onError);
             else settings();
         }
@@ -21372,10 +21467,12 @@ const memoryPrompt = (() => {
     }
 
     function build(results, settings) {
-        const max = Math.min(3, Math.max(1, Number(settings.maxEntries) || 3));
-        const unlimited = settings.tokenBudget === 0 || (typeof settings.tokenBudget === 'string' && settings.tokenBudget.trim() === '0');
-        const budget = unlimited ? 0 : Math.min(1200, Math.max(50, Number(settings.tokenBudget) || 300));
-        const cleanField = value => clean(value, unlimited ? Infinity : 3600);
+        const rawMax = Number(settings.maxEntries);
+        const max = (Number.isFinite(rawMax) && rawMax === 0) ? Infinity : Math.max(1, Math.trunc(Number.isFinite(rawMax) && rawMax > 0 ? rawMax : 3));
+        const rawBudget = Number(settings.tokenBudget);
+        const unlimited = settings.tokenBudget === 0 || (typeof settings.tokenBudget === 'string' && settings.tokenBudget.trim() === '0') || (Number.isFinite(rawBudget) && rawBudget <= 0);
+        const budget = unlimited ? 0 : Math.max(1, Math.trunc(Number.isFinite(rawBudget) ? rawBudget : 300));
+        const cleanField = value => clean(value, Infinity);
         const lines = [];
         const used = [];
         let ordinaryUsed = 0;
@@ -21397,7 +21494,7 @@ const memoryPrompt = (() => {
                 ? ` ${new Date(entry.eventAt).toLocaleDateString()}` : '';
             const type = (classification ? classification + evoDate : '') || (entry.kind === 'fact' ? '事实' : memoryEngine.clarityLabel(hit.clarity));
             const title = cleanField(entry.title);
-            const prefix = `- [${type}] ${unlimited ? title : fit(title, 30)}：`;
+            const prefix = `- [${type}] ${title}：`;
             const summary = cleanField(entry.summary);
             const details = cleanField(entry.details);
             const body = entry.kind === 'code' ? [cleanField(entry.meaning), cleanField(entry.responseGuidance)].filter(Boolean).join('；回应：')
@@ -21410,7 +21507,7 @@ const memoryPrompt = (() => {
                 continue;
             }
             const text = body || '仅记得这个线索';
-            const excerpt = unlimited ? text : fit(text, Math.min(remaining, 110));
+            const excerpt = unlimited ? text : fit(text, remaining);
             if (!excerpt) {
                 report(hit, 'Token 预算不足');
                 continue;
@@ -21482,7 +21579,8 @@ const memoryBatch = (() => {
     const unavailable = '请先在 API 设置中配置可用的模型';
 
     function bounds(settings) {
-        return Math.max(10, Math.min(50, Number(settings.batchSize) || 30));
+        const val = Math.trunc(Number(settings.batchSize));
+        return Number.isFinite(val) && val >= 1 ? val : 30;
     }
 
     function messageText(message) {
@@ -21505,7 +21603,7 @@ const memoryBatch = (() => {
         const history = character.history || [];
         const state = stateFor(character);
         const resume = resumeIndex(history, state);
-        const maxRows = range ? 50 : bounds(memoryManagement.settingsFor(character));
+        const maxRows = range ? Infinity : bounds(memoryManagement.settingsFor(character));
         const start = range ? range.start - 1 : resume;
         const stop = range ? range.end : history.length;
         if (range && (!Number.isInteger(range.start) || !Number.isInteger(range.end)
@@ -21520,8 +21618,7 @@ const memoryBatch = (() => {
             const message = history[index];
             const text = messageText(message);
             if (!text) continue;
-            if (messages.length >= maxRows || length + text.length > 8500) {
-                if (range) throw new Error('这段超出单批上限（50 条有效消息或 8500 字），请缩小范围');
+            if (messages.length >= maxRows) {
                 available = true;
                 break;
             }
@@ -21539,12 +21636,12 @@ const memoryBatch = (() => {
     }
 
     function parseCandidates(raw, messages, limit) {
-        if (raw.length > 36000) throw new Error('整理结果超出大小限制');
         const text = raw.trim().replace(/^```(?:json)?\s*|\s*```$/gi, '');
         const data = JSON.parse(text);
-        if (!Array.isArray(data) || data.length > limit) throw new Error('模型返回的候选数量超出设置上限');
+        if (!Array.isArray(data)) throw new Error('模型返回的候选格式不是数组');
+        const bounded = Number.isFinite(limit) && limit > 0 ? data.slice(0, limit) : data;
         const candidates = new Map();
-        for (const item of data) {
+        for (const item of bounded) {
             const kind = item?.kind;
             const title = typeof item?.title === 'string' ? item.title.trim().slice(0, 100) : '';
             const summary = typeof item?.summary === 'string' ? item.summary.trim().slice(0, 450) : '';
@@ -21567,7 +21664,7 @@ const memoryBatch = (() => {
         return [...candidates.values()];
     }
 
-    const maxReferenceTokens = 1200;
+    const maxReferenceTokens = 100000;
 
     function referenceFor(entry) {
         const clean = (value, limit) => String(value ?? '').replace(/data:[^\s]+/gi, '').trim().slice(0, limit);
@@ -21653,8 +21750,10 @@ ${preference}
         }
         current.add(character.id);
         const archiveId = getActiveArchive(character).id;
-        const interval = Math.max(5, Math.min(120, Number(settings.autoIntervalMinutes) || 5));
-        const candidateLimit = Math.max(1, Math.min(5, Math.trunc(Number(settings.batchMaxCandidates) || 5)));
+        const rawInterval = Number(settings.autoIntervalMinutes);
+        const interval = Number.isFinite(rawInterval) && rawInterval >= 0 ? rawInterval : 5;
+        const rawCand = Math.trunc(Number(settings.batchMaxCandidates));
+        const candidateLimit = Number.isFinite(rawCand) && rawCand >= 1 ? rawCand : 5;
         try {
             const existingMemories = await validateReferences(character.id, archiveId, approvedReferences);
             if (character.activeArchiveId !== archiveId) return null;
@@ -40871,10 +40970,36 @@ const peekWallet = (() => {
     const copyFor = (character, key) => peekWalletView.format(key, walletProfiles.profile(character).language);
     const formatMoney = (cents, currency) => cents == null ? '待确认' : walletProfiles.money(cents, currency || 'CNY', 'zh-CN');
 
+    function sanitizeWalletLine(message) {
+        if (!message || !['user', 'assistant'].includes(message.role) || message.isContextDisabled || message.isWithdrawn || message.isThinking || message.isStatusUpdate) return '';
+        const text = memoryBatch.messageText(message).replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+        const fragments = text.match(/[^。！？；!?;\n]+[。！？；!?;]*/g) || [];
+        return clean(fragments.filter(line =>
+            !/(?:你的|您的|用户的|your|user's).{0,45}(?:账户|余额|银行卡|卡号|账单|验证码|account|balance|card|statement|cvv)/i.test(line))
+            .join(' '), 360);
+    }
+
+    function recentChatRows(character, limit = 100) {
+        const history = character.history || [];
+        const rows = [];
+        for (let index = history.length - 1; index >= 0 && rows.length < limit; index--) {
+            const message = history[index];
+            const body = sanitizeWalletLine(message);
+            if (!body) continue;
+            rows.push({
+                id: message.id,
+                timestamp: message.timestamp,
+                speaker: message.role === 'user' ? '用户' : '角色',
+                body
+            });
+        }
+        return rows.reverse();
+    }
+
     function unread(character, wallet) {
         const history = character.history || [];
         const cursor = wallet?.cursor;
-        let start = cursor ? history.findIndex(message => message.id === cursor.id) + 1 : Math.max(0, history.length - 30);
+        let start = cursor ? history.findIndex(message => message.id === cursor.id) + 1 : Math.max(0, history.length - 100);
         if (cursor && start === 0) {
             start = history.findIndex(message => message.timestamp > cursor.timestamp);
             if (start < 0) return [];
@@ -40883,16 +41008,11 @@ const peekWallet = (() => {
         let size = 0;
         for (let index = start; index < history.length; index++) {
             const message = history[index];
-            if (message.role !== 'assistant' || message.isContextDisabled) continue;
-            const text = memoryBatch.messageText(message).replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-            const fragments = text.match(/[^。！？；!?;\n]+[。！？；!?;]*/g) || [];
-            const body = clean(fragments.filter(line =>
-                !/(?:你的|您的|用户的|your|user's).{0,45}(?:账户|余额|银行卡|卡号|账单|验证码|account|balance|card|statement|cvv)/i.test(line))
-                .join(' '), 300);
+            const body = sanitizeWalletLine(message);
             if (!body) continue;
-            if (rows.length >= 30 || size + body.length > 4500) break;
+            if (rows.length >= 100 || size + body.length > 32000) break;
             size += body.length;
-            rows.push({ id: message.id, timestamp: message.timestamp, speaker: '角色', body });
+            rows.push({ id: message.id, timestamp: message.timestamp, speaker: message.role === 'user' ? '用户' : '角色', body });
         }
         return rows;
     }
@@ -40908,7 +41028,8 @@ transactions 是这次生成的完整首期账单。按最早到最近排列，�
 每笔填 title、description（角色当地账单语言，参考 ${region.language}；其他外语可用英文）、language（zh、en 或 ja）、titleZh、descriptionZh、kind（expense、income 或 transfer）、category（food、transport、shopping、services、income、transfer、yield 或 other）、cents（原币最小单位）、currency、daysAgo（距离今天的整数天数，0 到 90）、from 或 to（accounts 中的 id）。支出填 from，收入填 to，同币种转账填两端；外币结算还须填 settlementCurrency 和 settlementCents。外文原文和中文译文都必须有。余额是截至当前的最终余额，已包含这些交易。只有确实来自对话的交易才填 refs（对话序号数组）；虚构背景交易不要填写 refs。
 角色：${clean(character.realName || character.remarkName, 80)}
 人设：${clean(character.persona, 1000)}
-最近角色对话：${dialogueFor(rows)}`;
+最近100条聊天记录（完整上下文参考，包含用户与角色互动中的转账、外卖、购物、报销、工资、亲属卡等属于角色的收支）：${dialogueFor(recentChatRows(character, 100))}
+本批待同步对话：${dialogueFor(rows)}`;
     }
 
     function promptFor(character, wallet, rows) {
@@ -40928,11 +41049,12 @@ transactions 只记对话明确已发生、属于该角色且金额和入扣账�
 角色：${clean(character.realName || character.remarkName, 80)}
 人设：${clean(character.persona, 1000)}
 上次钱包：${JSON.stringify(reference)}
-新增对话：${dialogueFor(rows)}`;
+最近100条聊天记录（完整上下文参考，用来准确理解消费、转账、亲属卡、外卖、报销、工资等来龙去脉；不要重复记上次钱包已入账的旧账）：${dialogueFor(recentChatRows(character, 100))}
+新增对话（refs 对应这里的序号）：${dialogueFor(rows)}`;
     }
 
     function applyResult(response, previous, rows, region) {
-        if (response.length > 22000) throw new Error('钱包返回内容过长');
+        if (response.length > 120000) throw new Error('钱包返回内容过长');
         const result = JSON.parse(response.trim().replace(/^\x60\x60\x60(?:json)?\s*|\s*\x60\x60\x60$/gi, ''));
         if (!['accounts', 'transactions', 'pending'].every(key => Array.isArray(result?.[key])) ||
             result.accounts.length > 30 || result.pending.length > 30) {
@@ -41165,7 +41287,7 @@ transactions 只记对话明确已发生、属于该角色且金额和入扣账�
         const wallet = walletProfiles.prepare(character);
         if (!wallet || character.peekScreenSettings?.walletInChat !== true) return '';
         const latest = history.filter(message => message.role === 'user').at(-1);
-        if (!/钱包|余额|银行卡|账单|消费|开销|花了|付款|转账|存款|多少钱|支出|收入|买了|wallet|balance|spen[dt]|payment|transactions?/i.test(memoryBatch.messageText(latest))) return '';
+        if (!/钱包|余额|银行卡|账单|消费|开销|花了|付款|转账|存款|多少钱|支出|收入|买了|请客|外卖|亲属卡|报销|买菜|发工资|工资|薪水|奖金|红包|房租|水电|打车|机票|火车票|快递|网购|下单|AA|付钱|结账|买单|花钱|攒钱|预算|手头紧|wallet|balance|spen[dt]|payment|transactions?|salary|payday|rent|takeout|delivery|reimburse|treat/i.test(memoryBatch.messageText(latest))) return '';
         const accounts = (Array.isArray(wallet.accounts) ? wallet.accounts : []).map(account =>
             `${peekWalletView.accountName(account, 'zh')} ${account.currency || 'CNY'} ${formatMoney(account.cents, account.currency)}`).join('，');
         const latestIds = new Set(Array.isArray(wallet.latestBillIds) ? wallet.latestBillIds : []);
