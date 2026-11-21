@@ -1,12 +1,13 @@
 /**
  * Smart Auto-Reply Plugin (smart-auto-reply.js)
- * 放置于 index.html 同级目录，并在 index.html 的 </body> 前加入一行：
+ * 放置于 index.html 同级目录（或 plugins/ 目录），并在 index.html 的 </body> 前引入：
  * <script src="./smart-auto-reply.js"></script>
  *
  * 功能：
  * 1. 智慧动态主动发消息：AI 根据聊天内容与客观时间，自主决定多久后再主动找你及理由（零额外 API 费用）。
  * 2. 双重防误发：只要你在预约时间前发了任何新消息（文字/图片/语音/拍一拍），旧预约立即作废，绝不重复按旧时间发。
  * 3. 与原版固定间隔融合：保留原版固定间隔作为基础兜底；开启智慧动态时优先按动态排程走（如深夜晚安排明早，不被固定间隔半夜打断）。
+ * 4. 原生卡片适配 + 延迟加载防漏注入：无论 IndexedDB 加载多慢，打开聊天设置页都能稳定显示并与当前角色同步。
  */
 (() => {
     if (window.__uwuSmartAutoReplyLoaded) return;
@@ -165,68 +166,107 @@
         window.checkAutoReply = wrapped;
     }
 
-    // 5. 自动在角色聊天设置页注入「智慧动态主动发消息」开关与下次预约状态预览
+    // 5. 挂载到 injectChatSettingsHtml：每次聊天设置页模板注入后立刻挂载原生功能卡片
+    function hookInjectChatSettingsHtml() {
+        if (typeof window.injectChatSettingsHtml !== 'function' || window.injectChatSettingsHtml.__smartWrapped) return;
+        const origInject = window.injectChatSettingsHtml;
+        const wrapped = function () {
+            const ret = origInject.apply(this, arguments);
+            injectSmartSettingsUI();
+            return ret;
+        };
+        wrapped.__smartWrapped = true;
+        window.injectChatSettingsHtml = wrapped;
+    }
+
+    function syncUiFromChar() {
+        const swInput = document.getElementById('setting-smart-auto-reply-enabled');
+        const statusLine = document.getElementById('smart-auto-reply-status');
+        if (!swInput || !statusLine) return;
+        if (typeof currentChatId === 'undefined' || !window.db?.characters) return;
+        const ch = window.db.characters.find(c => c.id === currentChatId);
+        if (!ch) return;
+        swInput.checked = ch.autoReply?.smartEnabled === true;
+        if (ch.autoReply?.smartEnabled && ch.autoReply?.nextPingAt > Date.now()) {
+            const d = new Date(ch.autoReply.nextPingAt);
+            const tStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            const reason = ch.autoReply.nextPingReason ? `（${ch.autoReply.nextPingReason}）` : '';
+            statusLine.innerHTML = '';
+            const span = document.createElement('span');
+            span.textContent = `下次预计：${tStr}${reason}`;
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.textContent = '取消';
+            cancelBtn.className = 'uwu-smart-cancel-btn';
+            cancelBtn.style.cssText = 'font-size:11px;padding:1px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;margin-left:6px;flex-shrink:0;';
+            cancelBtn.onclick = async (e) => {
+                e.stopPropagation();
+                clearSmartSchedule(ch);
+                if (typeof window.saveData === 'function') await window.saveData();
+                syncUiFromChar();
+            };
+            statusLine.append(span, cancelBtn);
+        } else {
+            const nextTxt = swInput.checked ? '已开启 · 按聊天与时间自动约下次联系' : '关闭 · 仅用原版固定间隔'; if (statusLine.textContent !== nextTxt) statusLine.textContent = nextTxt;
+        }
+    }
+
+    // 6. 自动在角色聊天设置页注入原生样式的「智慧主动消息」功能卡片
     function injectSmartSettingsUI() {
         const baseSwitch = document.getElementById('setting-auto-reply-enabled');
-        if (!baseSwitch || document.getElementById('setting-smart-auto-reply-enabled')) return;
-        const parentItem = baseSwitch.closest('.kkt-item') || baseSwitch.closest('.form-group') || baseSwitch.parentElement;
-        if (!parentItem || !parentItem.parentElement) return;
+        if (!baseSwitch) return false;
+        if (document.getElementById('setting-smart-auto-reply-enabled')) {
+            syncUiFromChar();
+            return true;
+        }
 
-        const row = document.createElement('div');
-        row.className = 'kkt-item uwu-smart-autoreply-row';
-        row.id = 'smart-auto-reply-setting-row';
-        row.style.cssText = 'flex-direction:column;align-items:stretch;gap:6px;';
+        const featureCard = baseSwitch.closest('.feature-card');
+        const fallbackItem = baseSwitch.closest('.kkt-item') || baseSwitch.closest('.form-group');
+        const anchor = featureCard || fallbackItem;
+        if (!anchor || !anchor.parentElement) return false;
 
-        const top = document.createElement('div');
-        top.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;';
+        let card;
+        if (featureCard) {
+            // 原生 feature-card 网格卡片风格，与「自动消息」并排显示，完美适配手机端与全局 CSS
+            card = document.createElement('div');
+            card.className = 'feature-card uwu-smart-autoreply-row';
+            card.id = 'smart-auto-reply-setting-row';
+            card.dataset.feature = 'smart-auto-reply';
+            card.innerHTML = `
+                <div class="feature-card-header">
+                    <div class="feature-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <label class="kkt-switch">
+                        <input type="checkbox" id="setting-smart-auto-reply-enabled">
+                        <span class="kkt-slider"></span>
+                    </label>
+                </div>
+                <div class="feature-card-body">
+                    <div class="feature-card-title">智慧主动消息</div>
+                    <div class="feature-card-desc" id="smart-auto-reply-status">关闭 · 仅用原版固定间隔</div>
+                </div>
+            `;
+        } else {
+            // 兼容非卡片布局的兜底样式
+            card = document.createElement('div');
+            card.className = 'kkt-item uwu-smart-autoreply-row';
+            card.id = 'smart-auto-reply-setting-row';
+            card.innerHTML = `
+                <div class="kkt-item-content">
+                    <div class="kkt-item-title">智慧主动消息</div>
+                    <div class="kkt-item-subtitle" id="smart-auto-reply-status">关闭 · 仅用原版固定间隔</div>
+                </div>
+                <label class="kkt-switch">
+                    <input type="checkbox" id="setting-smart-auto-reply-enabled">
+                    <span class="kkt-slider"></span>
+                </label>
+            `;
+        }
 
-        const textCol = document.createElement('div');
-        textCol.className = 'kkt-item-content';
-        textCol.innerHTML = '<div class="kkt-item-title">智慧动态主动发消息</div><div class="kkt-item-subtitle">根据聊天内容与客观时间由 AI 决定下次主动找你的时机，你一发新消息旧预约自动作废</div>';
+        anchor.parentElement.insertBefore(card, anchor.nextSibling);
 
-        const swLbl = document.createElement('label');
-        swLbl.className = 'kkt-switch';
-        const swInput = document.createElement('input');
-        swInput.type = 'checkbox';
-        swInput.id = 'setting-smart-auto-reply-enabled';
-        const swSlider = document.createElement('span');
-        swSlider.className = 'kkt-slider';
-        swLbl.append(swInput, swSlider);
-
-        top.append(textCol, swLbl);
-
-        const statusLine = document.createElement('div');
-        statusLine.id = 'smart-auto-reply-status';
-        statusLine.style.cssText = 'font-size:12px;color:#666;display:flex;align-items:center;justify-content:space-between;gap:8px;';
-
-        row.append(top, statusLine);
-        parentItem.parentElement.insertBefore(row, parentItem.nextSibling);
-
-        const syncUiFromChar = () => {
-            if (typeof currentChatId === 'undefined' || !window.db?.characters) return;
-            const ch = window.db.characters.find(c => c.id === currentChatId);
-            if (!ch) return;
-            swInput.checked = ch.autoReply?.smartEnabled === true;
-            if (ch.autoReply?.smartEnabled && ch.autoReply?.nextPingAt > Date.now()) {
-                const d = new Date(ch.autoReply.nextPingAt);
-                const tStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                const reason = ch.autoReply.nextPingReason ? `（${ch.autoReply.nextPingReason}）` : '';
-                statusLine.innerHTML = `<span>下次预计主动联系：${tStr}${reason}</span>`;
-                const cancelBtn = document.createElement('button');
-                cancelBtn.type = 'button';
-                cancelBtn.textContent = '取消本次';
-                cancelBtn.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;';
-                cancelBtn.onclick = async () => {
-                    clearSmartSchedule(ch);
-                    if (typeof window.saveData === 'function') await window.saveData();
-                    syncUiFromChar();
-                };
-                statusLine.append(cancelBtn);
-            } else {
-                statusLine.textContent = swInput.checked ? '已开启：将在下次对话后自动安排动态时机（无预约时由固定间隔兜底）' : '';
-            }
-        };
-
+        const swInput = document.getElementById('setting-smart-auto-reply-enabled');
         swInput.addEventListener('change', async () => {
             if (typeof currentChatId === 'undefined' || !window.db?.characters) return;
             const ch = window.db.characters.find(c => c.id === currentChatId);
@@ -238,15 +278,22 @@
             syncUiFromChar();
         });
 
-        // 当打开聊天设置页时自动刷新状态
-        const settingsScreen = document.getElementById('chat-settings-screen');
-        if (settingsScreen) {
-            const obs = new MutationObserver(() => {
-                if (settingsScreen.classList.contains('active')) syncUiFromChar();
-            });
-            obs.observe(settingsScreen, { attributes: true, attributeFilter: ['class'] });
-        }
         syncUiFromChar();
+        return true;
+    }
+
+    function observeSettingsScreen() {
+        const settingsScreen = document.getElementById('chat-settings-screen');
+        if (!settingsScreen || settingsScreen.__smartObserved) return;
+        settingsScreen.__smartObserved = true;
+        const obs = new MutationObserver(() => {
+            if (!document.getElementById('setting-smart-auto-reply-enabled')) {
+                injectSmartSettingsUI();
+            } else if (settingsScreen.classList.contains('active')) {
+                syncUiFromChar();
+            }
+        });
+        obs.observe(settingsScreen, { childList: true, attributes: true, attributeFilter: ['class'] });
     }
 
     function hookCoreFunctions() {
@@ -254,10 +301,12 @@
         hookHandleAiReplyContent();
         hookSendMessage();
         hookCheckAutoReply();
+        hookInjectChatSettingsHtml();
     }
 
     function bootstrap() {
         hookCoreFunctions();
+        observeSettingsScreen();
         injectSmartSettingsUI();
     }
 
@@ -265,11 +314,22 @@
     hookCoreFunctions();
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(bootstrap, 200));
+        document.addEventListener('DOMContentLoaded', () => {
+            bootstrap();
+            // 兜底轮询：即使真机 IndexedDB 加载耗时较长，也能在模板渲染后第一时间补挂载
+            let tries = 0;
+            const timer = setInterval(() => {
+                tries++;
+                bootstrap();
+                if (document.getElementById('setting-smart-auto-reply-enabled') || tries >= 40) {
+                    clearInterval(timer);
+                }
+            }, 500);
+        });
     } else {
-        setTimeout(bootstrap, 200);
+        bootstrap();
     }
 
     // 导出供外部测试与调试
-    window.SmartAutoReplyPlugin = { clearSmartSchedule, getLastUserTimestamp, bootstrap };
+    window.SmartAutoReplyPlugin = { clearSmartSchedule, getLastUserTimestamp, bootstrap, syncUiFromChar };
 })();
