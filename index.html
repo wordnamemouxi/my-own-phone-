@@ -11221,9 +11221,9 @@ input:checked + .kkt-slider:before {
 .uwu-memory-link-picker-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: .88rem; font-weight: 600; }
 .uwu-memory-link-picker input[type="search"] { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
 .uwu-memory-link-picker-list { max-height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-.uwu-memory-link-picker-item { display: flex !important; align-items: center; gap: 8px; padding: 5px 6px; margin: 0 !important; border-radius: 6px; cursor: pointer; font-size: .86rem; background: #fff; border: 1px solid #eee; }
+.uwu-memory-link-picker-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin: 0; border-radius: 6px; cursor: pointer; font-size: .86rem; background: #fff; border: 1px solid #eee; }
 .uwu-memory-link-picker-item.is-selected { background: #f2edf7; border-color: #b7a6c9; }
-.uwu-memory-link-picker-item input[type="checkbox"] { flex: 0 0 auto; width: auto !important; }
+.uwu-memory-link-picker-item input[type="checkbox"] { flex: 0 0 auto; width: auto; }
 .uwu-memory-timeline li::before {
     content: "";
     position: absolute;
@@ -11423,7 +11423,7 @@ article.uwu-memory-card > button.btn { display: inline-flex; width: auto; margin
 .uwu-memory-stat span { font-size: .74rem; color: #6c6478; }
 .uwu-memory-guide { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: #f6f3fa; border: 1px solid #e7dff0; color: #4a4157; font-size: .84rem; line-height: 1.5; }
 .uwu-memory-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
-.uwu-memory-toolbar select { width: 100%; margin: 0 !important; padding: 6px 8px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: .84rem; }
+.uwu-memory-toolbar select { width: 100%; margin: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: .84rem; }
 .uwu-memory-card { border-radius: 12px; padding: 14px 15px 10px; margin-top: 10px; border: 1px solid #ece9f0; box-shadow: 0 1px 3px rgba(30,20,45,.04); }
 .uwu-memory-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .uwu-memory-card-title { font-size: .96rem; font-weight: 700; color: #26222e; line-height: 1.35; }
@@ -11447,6 +11447,27 @@ article.uwu-memory-card > button.btn { display: inline-flex; width: auto; margin
 .uwu-memory-rel-actions button.btn { padding: 4px 9px; font-size: .78rem; margin: 0; width: auto; }
 .uwu-memory-focus-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .uwu-memory-focus-bar button.btn { margin: 0; padding: 6px 11px; font-size: .82rem; width: auto; }
+.uwu-memory-focus-menu { position: relative; display: inline-block; }
+.uwu-memory-focus-menu > summary { list-style: none; cursor: pointer; padding: 6px 11px; font-size: .82rem; font-weight: 600; border-radius: 8px; border: 1px solid #d5cddc; background: #fff; color: #363042; }
+.uwu-memory-focus-menu > summary::-webkit-details-marker { display: none; }
+.uwu-memory-focus-menu[open] > div { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; min-width: 150px; padding: 6px; border-radius: 10px; background: #fff; border: 1px solid #e2dce8; box-shadow: 0 6px 18px rgba(30,20,45,.12); display: flex; flex-direction: column; gap: 4px; }
+.uwu-memory-focus-menu[open] > div button.btn { width: 100%; text-align: left; margin: 0; padding: 6px 9px; font-size: .82rem; }
+.uwu-memory-load-more { width: 100%; margin-top: 10px; padding: 9px; border-radius: 10px; border: 1px dashed #c8bed4; background: #faf8fc; color: #4a3f5c; font-size: .86rem; font-weight: 600; cursor: pointer; }
+.uwu-avatar-lib-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.uwu-avatar-lib-card { border: 1px solid #e6e2ec; border-radius: 10px; padding: 6px; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.uwu-avatar-lib-card.is-current { border-color: #7c5cbf; background: #f6f2fc; }
+.uwu-avatar-lib-card img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+.uwu-avatar-lib-card p { margin: 0; font-size: .75rem; color: #4c4657; line-height: 1.3; word-break: break-all; }
+.uwu-avatar-lib-card .uwu-av-btns { display: flex; gap: 4px; width: 100%; justify-content: center; }
+.uwu-avatar-lib-card button { font-size: .72rem; padding: 3px 6px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+@keyframes uwuPokeShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px) rotate(-6deg); } 75% { transform: translateX(4px) rotate(6deg); } }
+.uwu-poke-shake { animation: uwuPokeShake 0.35s ease; }
+.uwu-avatar-poke-dialog { border-radius: 16px; }
+.uwu-poke-box { border: 1px solid #e6e2ec; border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #faf8fc; }
+.uwu-poke-label { display: block; font-size: .84rem; margin: 6px 0; font-weight: 600; color: #363042; }
+.uwu-poke-input, .uwu-avatar-desc-input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; background: #fff; }
+.uwu-avatar-upload-box { border: 1px solid #e6e2ec; border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; }
+.uwu-avatar-upload-title { display: block; font-size: .88rem; margin-bottom: 4px; color: #26222e; }
 
 </style>
     <style>
@@ -14733,7 +14754,7 @@ textarea.mp-transparent-input {
                         </div>
                     </div>
 
-                    <div class="kkt-group" style="margin-top: 16px;">
+                    <div class="kkt-group" id="api-lively-settings-group" style="margin-top: 16px;">
                         <div class="kkt-item">
                             <div class="kkt-item-content">
                                 <div class="kkt-item-title">活人感强化（去书面语尾注）</div>
@@ -21116,7 +21137,9 @@ const memoryManagement = (() => {
             const style = memoryEngine.styleFor(character);
             const clarityCls = { '清晰': 'uwu-badge-clear', '有印象': 'uwu-badge-impression', '模糊': 'uwu-badge-fuzzy' };
 
-            const redraw = () => {
+            let pageLimit = 30;
+            const redraw = (resetPage = true) => {
+                if (resetPage) pageLimit = 30;
                 const needle = search.value.trim().toLowerCase();
                 let visible = entries.filter(entry => {
                     if (!codes && libraryCategory !== 'all' && entry.recallClass !== libraryCategory) return false;
@@ -21141,7 +21164,8 @@ const memoryManagement = (() => {
                 }
 
                 list.replaceChildren();
-                for (const entry of visible) {
+                const paged = visible.slice(0, pageLimit);
+                for (const entry of paged) {
                     const card = element('article', undefined, { className: 'kkt-group uwu-memory-card' });
                     const match = thumbnails.get(entry.id);
                     const head = element('div', undefined, { className: 'uwu-memory-card-head' });
@@ -21213,6 +21237,11 @@ const memoryManagement = (() => {
                     if (entry.sourceMessageIds?.length) card.append(sourceDetails(entry.sourceMessageIds, entry.archiveId));
                     list.append(card);
                 }
+                if (visible.length > paged.length) {
+                    const moreBtn = element('button', `加载更多（还有 ${visible.length - paged.length} 条）`, { type: 'button', className: 'uwu-memory-load-more' });
+                    moreBtn.addEventListener('click', () => { pageLimit += 30; redraw(false); });
+                    list.append(moreBtn);
+                }
                 if (!visible.length) list.append(element('p', '当前条件下暂无条目，可使用上方按钮让 AI 提取或手动新增。'));
             };
 
@@ -21246,12 +21275,19 @@ const memoryManagement = (() => {
                     if (key === 'all') {
                         const mainOrg = button(review ? '审核待确认记忆' : '综合整理聊天', () => openOrganize('all'));
                         mainOrg.className = 'btn btn-primary';
+                        const focusMenu = element('details', undefined, { className: 'uwu-memory-focus-menu' });
+                        const focusDrop = element('div');
+                        focusDrop.append(
+                            button('提取：重要约定', () => { focusMenu.open = false; openOrganize('agreement'); }),
+                            button('提取：暗号与梗', () => { focusMenu.open = false; openOrganize('code'); }),
+                            button('提取：成长变化', () => { focusMenu.open = false; openOrganize('evolution'); }),
+                            button('提取：核心设定', () => { focusMenu.open = false; openOrganize('core'); })
+                        );
+                        focusMenu.append(element('summary', '专项提取 ▾'), focusDrop);
                         actionBar.append(
                             mainOrg,
-                            button('AI 提取重要约定', () => openOrganize('agreement')),
-                            button('AI 提取暗号与梗', () => openOrganize('code')),
-                            button('AI 提取成长变化', () => openOrganize('evolution')),
-                            button('手动新增记忆', () => edit(character, 'event', null, refresh))
+                            focusMenu,
+                            button('手动新增', () => edit(character, 'event', null, refresh))
                         );
                     } else {
                         const aiBtn = button(review ? '审核待确认记忆' : `AI 提取${recallClasses[key]}`, () => openOrganize(key));
@@ -21414,6 +21450,63 @@ const memoryManagement = (() => {
             panel.showModal();
         }
 
+        function shareCode(entry) {
+            const panel = element('dialog', undefined, { className: 'uwu-memory-dialog' });
+            const roles = element('select');
+            roles.add(element('option', '请选择目标角色', { value: '' }));
+            for (const role of db.characters.filter(role => role.id !== characterId)) {
+                roles.add(element('option', role.remarkName || role.name || role.realName || role.id, { value: role.id }));
+            }
+            const result = element('p');
+            result.setAttribute('role', 'status');
+            const copy = button('确认复制暗号和图片', async () => {
+                copy.disabled = roles.disabled = true;
+                try {
+                    await memoryRepository.shareCode(characterId, roles.value, entry.id);
+                    panel.close();
+                    status.textContent = '暗号已复制到所选角色';
+                } catch (error) {
+                    result.textContent = error.message;
+                    copy.disabled = roles.disabled = false;
+                }
+            });
+            copy.disabled = true;
+            roles.addEventListener('change', () => { copy.disabled = !roles.value; });
+            panel.append(element('h2', '复制暗号到其他角色'), element('p', entry.title),
+                element('p', '目标角色会得到独立副本，包含暗号定义和图片。'),
+                field('目标角色', roles), copy, result, button('取消', () => panel.close()));
+            panel.addEventListener('close', () => panel.remove(), { once: true });
+            document.body.append(panel);
+            panel.showModal();
+        }
+
+        function sourceDetails(ids, archiveId) {
+            const details = element('details');
+            const summary = element('summary', `查看来源消息（${ids.length}）`);
+            details.append(summary);
+            details.addEventListener('toggle', () => {
+                if (!details.open || details.childElementCount > 1) return;
+                const sources = new Map();
+                const needed = new Set(ids);
+                const histories = [!archiveId || archiveId === character.activeArchiveId ? character.history || [] : [],
+                    ...(character.archives || []).filter(archive => archive.id !== character.activeArchiveId
+                        && (!archiveId || archive.id === archiveId)).map(archive => archive.data?.history || [])];
+                for (const history of histories) {
+                    for (const message of history) {
+                        if (needed.delete(message.id)) sources.set(message.id, message);
+                    }
+                    if (!needed.size) break;
+                }
+                for (const id of ids) {
+                    const message = sources.get(id);
+                    const text = memoryBatch.messageText(message);
+                    const speaker = message?.role === 'assistant' ? '角色' : '用户';
+                    details.append(element('p', text ? `${speaker}：${text}` : `来源消息 ${id} 已删除、隐藏或不可用`));
+                }
+            });
+            return details;
+        }
+
         function reviewBatch(review) {
             const panel = element('dialog', undefined, { className: 'uwu-memory-dialog' });
             const reviewStatus = element('p');
@@ -21548,6 +21641,25 @@ const memoryManagement = (() => {
                         status.textContent = `已导出 ${hist.length} 条 JSON 聊天备份`;
                     } catch (error) { onError(error); }
                 }), field('备份重复项处理', strategy), field('恢复角色记忆备份', importJson),
+                button('一键将本角色全部记忆设为「角色通用（所有存档）」', async () => {
+                    const allMem = await memoryRepository.list(characterId);
+                    if (!allMem.length) { status.textContent = '当前角色暂无记忆可切换'; return; }
+                    if (!confirm(`确认将「${character.remarkName || character.name}」的全部 ${allMem.length} 条记忆都设为「角色通用（所有存档适用）」吗？`)) return;
+                    try {
+                        await dexieDB.memoryEntries.where('characterId').equals(characterId).modify({ archiveId: null, updatedAt: Date.now() });
+                        status.textContent = `已将全部 ${allMem.length} 条记忆切换为「所有存档通用」`;
+                    } catch (error) { onError(error); }
+                }),
+                button('一键将本角色全部记忆设为「仅当前存档」', async () => {
+                    const allMem = await memoryRepository.list(characterId);
+                    if (!allMem.length) { status.textContent = '当前角色暂无记忆可切换'; return; }
+                    const activeArc = getActiveArchive(character);
+                    if (!confirm(`确认将「${character.remarkName || character.name}」的全部 ${allMem.length} 条记忆都设为仅「${activeArc.name}」存档适用吗？`)) return;
+                    try {
+                        await dexieDB.memoryEntries.where('characterId').equals(characterId).modify({ archiveId: activeArc.id, updatedAt: Date.now() });
+                        status.textContent = `已将全部 ${allMem.length} 条记忆切换为仅「${activeArc.name}」适用`;
+                    } catch (error) { onError(error); }
+                }),
                 button('清空已保存的长期记忆', async () => {
                     if (!confirm(`清空「${character.remarkName || character.name}」已保存的记忆、暗号和图片？`)) return;
                     try {
@@ -21639,8 +21751,29 @@ const memoryManagement = (() => {
             number(organize, 'batchMaxCandidates', '每次最多提议几条记忆', 1, null,
                 '控制 AI 单次最多提议几条待确认记忆（不设上限，填多少就是多少）。');
             toggle(inspect, 'debug', '显示记忆调试信息', '开启后再发一条消息，就能在本页看哪些记忆被发送、哪些被跳过。');
-            const save = element('button', '保存设置', { type: 'submit', className: 'btn btn-primary' });
-            form.append(save);
+            const save = element('button', '保存设置（仅当前角色）', { type: 'submit', className: 'btn btn-primary' });
+            const applyAllBtn = button('将此记忆设置应用到全部角色', async () => {
+                if (!confirm(`确认将当前的记忆通用设置（不含各自专属整理提示词）应用到全部 ${db.characters.length} 位角色吗？`)) return;
+                applyAllBtn.disabled = true;
+                try {
+                    const sharedConfig = Object.fromEntries(Object.entries(controls)
+                        .filter(([key]) => key !== 'organizeStylePrompt')
+                        .map(([key, control]) => [key, control.type === 'checkbox' ? control.checked : control.type === 'number' ? Number(control.value) : control.value]));
+                    const ownPrompt = memoryBatch.cleanStylePrompt(controls.organizeStylePrompt.value);
+                    for (const ch of db.characters) {
+                        ch.memorySettings = { ...(ch.memorySettings || {}), ...sharedConfig };
+                        if (ch.id === character.id) ch.memorySettings.organizeStylePrompt = ownPrompt;
+                    }
+                    await saveData();
+                    status.textContent = `已将记忆设置应用到全部 ${db.characters.length} 位角色`;
+                } catch (error) {
+                    onError(error);
+                } finally {
+                    applyAllBtn.disabled = false;
+                }
+            });
+            applyAllBtn.style.marginTop = '8px';
+            form.append(save, applyAllBtn);
             form.addEventListener('submit', async event => {
                 event.preventDefault();
                 save.disabled = true;
@@ -29716,6 +29849,28 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
             fullResponse = fullResponse.substring(lastThinkingIndex + 11);
         }
 
+        // 仅在剥离 <thinking> 后的正式回复正文中解析换头像与拍一拍标签，避免误触发思考过程
+        if (targetChatType === 'private' && chat) {
+            const pokeMatch = fullResponse.match(/\[SET_POKE:([^\]]+)\]/i);
+            if (pokeMatch) {
+                const newPoke = pokeMatch[1].trim().slice(0, 60);
+                if (newPoke) {
+                    chat.pokeText = newPoke;
+                    if (typeof saveData === 'function') saveData().catch(() => {});
+                }
+                fullResponse = fullResponse.replace(/\[SET_POKE:[^\]]+\]/gi, "").trim();
+            }
+            const avMatch = fullResponse.match(/\[CHANGE_AVATAR:([^\]|]+)(?:\|([^\]]*))?\]/i);
+            if (avMatch) {
+                const ref = avMatch[1].trim();
+                const desc = (avMatch[2] || '').trim().slice(0, 180);
+                fullResponse = fullResponse.replace(/\[CHANGE_AVATAR:[^\]]+\]/gi, "").trim();
+                if (typeof applyAiAvatarChange === 'function') {
+                    applyAiAvatarChange(chat, ref, desc).catch(() => {});
+                }
+            }
+        }
+
         // --- 朋友圈指令解析 ---
         const momentPostWithImageRegex = /\[(.*?)\s*发布了一条带图动态[：:](.*?)\|([\s\S]+?)\]/;
         const momentPostRegex = /\[(.*?)\s*发布了一条动态[：:]([\s\S]+?)\]/;
@@ -34959,6 +35114,12 @@ const chatRoomHtml = `
                         </div>
                         <span class="expansion-item-name">口语重说</span>
                     </div>
+                    <div class="expansion-item" id="avatar-poke-panel-btn">
+                        <div class="expansion-item-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.67 0-5.03-1.35-6.43-3.41.03-2.13 4.29-3.3 6.43-3.3 2.13 0 6.4 1.17 6.43 3.3C17.03 18.65 14.67 20 12 20z"/></svg>
+                        </div>
+                        <span class="expansion-item-name">头像/拍一拍</span>
+                    </div>
                     <div class="expansion-item" id="photo-video-btn">
                         <div class="expansion-item-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z"/></svg>
@@ -37717,6 +37878,40 @@ function buildLivelyPostscript(chat, historySlice) {
             else if (diffMin >= 1440) gapStr = `，距上一条消息约 ${Math.round(diffMin / 1440)} 天`;
         }
         parts.push(`[客观时间参考] 当前时间：${dateStr} ${period} ${timeStr}${gapStr}。仅作为客观时间背景，不要强行提及时间、不要主动催促饮食或作息，也不要打断当前对话。`);
+    }
+    if (chat && typeof chat === 'object' && Array.isArray(historySlice)) {
+        const recentUserMsgs = historySlice.filter(m => m && m.role === 'user').slice(-6);
+        const lastUserText = recentUserMsgs.map(m => {
+            if (Array.isArray(m.parts)) return m.parts.filter(p => p.type === 'text').map(p => p.text).join(' ');
+            return String(m.content || '');
+        }).join(' ');
+        // Collect recent images sent by user (so AI can pick #1 or #2 when user sends couple avatars!)
+        const recentImgs = [];
+        for (const m of recentUserMsgs) {
+            if (Array.isArray(m.parts)) {
+                for (const p of m.parts) {
+                    if (p.type === 'image' && p.data) recentImgs.push(p.data);
+                }
+            }
+        }
+        const mentionsAvatar = /头像|情头|换头|换个头|头像库|照片|图片|自拍|头顶小猫|avatar|pfp/i.test(lastUserText) || recentImgs.length > 0;
+        if (mentionsAvatar) {
+            const uName = (chat.myName || '对方').trim().slice(0, 20);
+            const lib = Array.isArray(chat.avatarLibrary) ? chat.avatarLibrary : [];
+            const curDesc = chat.currentAvatarDesc || '当前默认头像';
+            const libList = lib.slice(0, 12).map((item, idx) => `lib:${item.id}(${item.desc || '头像' + (idx + 1)})`).join('、');
+            const imgHint = recentImgs.length ? `；${uName}刚按顺序发了 ${recentImgs.length} 张图，编号为 img:1${recentImgs.length > 1 ? ` 到 img:${recentImgs.length}` : ''}（请核对顺序别选错张）` : '';
+            parts.push(`[头像自主能力·仅相关时触发] 你当前头像是「${curDesc}」${libList ? `；头像库有：${libList}` : ''}${imgHint}。如果你决定换头像（例如答应一起换情头或换头像库里的某张），请在发给对方的正文末尾（不要写在思考过程里）附隐藏标签 [CHANGE_AVATAR:img:序号|描述] 或 [CHANGE_AVATAR:lib:ID|描述]：普通头像写清画面内容；若是和${uName}的情头，描述必须写明“和${uName}的情头｜我这张的画面内容，${uName}那边配对头像的画面内容”（例如：和${uName}的情头｜我这张是头顶趴着的模糊小猫，${uName}那边是戴耳机的小女孩）。系统会自动换上并完整存入头像库；不换则不写此标签。`);
+        }
+
+        // Poke text logic: auto-init ONCE when empty; once set, ZERO token cost unless user mentions 拍一拍
+        const hasPoke = typeof chat.pokeText === 'string' && chat.pokeText.trim().length > 0;
+        const mentionsPoke = /拍一拍|拍了拍|改拍一拍|poke/i.test(lastUserText);
+        if (!hasPoke) {
+            parts.push(`[首次设定拍一拍] 你目前还没有微信“拍一拍”文案。请在本次回复末尾附带一个隐藏标签 [SET_POKE:文案]（例如“拍了拍${chat.realName || '我'}的手臂肌肉”），以后不会每次修改。`);
+        } else if (mentionsPoke) {
+            parts.push(`[拍一拍参考] 你当前的拍一拍文案是「${chat.pokeText}」。只有当你此刻特地想改时，才在回复末尾附 [SET_POKE:新文案]，否则不用改。`);
+        }
     }
     if (typeof window !== 'undefined' && window.__uwuCasualRegenOnce) {
         window.__uwuCasualRegenOnce = false;
@@ -61878,7 +62073,7 @@ const init = async () => {
     // 定时任务
     updateClock();
     setInterval(updateClock, 30000);
-    setInterval(checkAutoReply, 60000);
+    setInterval(() => checkAutoReply(), 60000);
     
     // 检查备份提醒
     setTimeout(checkBackupReminder, 5000); // 启动后延迟5秒检查
@@ -62118,6 +62313,261 @@ function showGlobalRescuePanel() {
 
 </script>     <!-- 主入口：初始化(init)、全局事件监听 -->
     <script>
+// === 角色头像库管理、AI 自主换头像与双击头像拍一拍模块 ===
+async function applyAiAvatarChange(chat, ref, desc) {
+    if (!chat) return;
+    chat.avatarLibrary ||= [];
+    let newUrl = '';
+    let finalDesc = desc || '';
+    if (ref.startsWith('lib:')) {
+        const lid = ref.slice(4).trim();
+        const found = chat.avatarLibrary.find(item => item.id === lid);
+        if (found?.url) {
+            newUrl = found.url;
+            finalDesc = finalDesc || found.desc || '头像库头像';
+        }
+    } else if (ref.startsWith('img:')) {
+        const idx = Number.parseInt(ref.slice(4).trim(), 10) - 1;
+        const recentUserMsgs = (chat.history || []).filter(m => m && m.role === 'user').slice(-6);
+        const imgs = [];
+        for (const m of recentUserMsgs) {
+            if (Array.isArray(m.parts)) {
+                for (const p of m.parts) {
+                    if (p.type === 'image' && p.data) imgs.push(p.data);
+                }
+            }
+        }
+        if (Number.isInteger(idx) && idx >= 0 && idx < imgs.length) {
+            newUrl = imgs[idx];
+            finalDesc = finalDesc || '和对方一起换的新头像';
+        }
+    }
+    if (!newUrl) return;
+    const isCouple = /情头|情侣头像|couple/i.test(finalDesc);
+    chat.avatar = newUrl;
+    chat.currentAvatarDesc = finalDesc;
+    const existingItem = chat.avatarLibrary.find(item => item.url === newUrl);
+    if (existingItem) {
+        if (finalDesc) existingItem.desc = finalDesc;
+        existingItem.isCouple = existingItem.isCouple || isCouple;
+        existingItem.updatedAt = Date.now();
+    } else {
+        chat.avatarLibrary.unshift({
+            id: 'av_' + Date.now().toString(36),
+            url: newUrl,
+            desc: finalDesc,
+            isCouple,
+            addedAt: Date.now()
+        });
+    }
+    const cName = chat.remarkName || chat.realName || chat.name || '对方';
+    chat.history ||= [];
+    chat.history.push({
+        id: `msg_avatar_${Date.now()}`,
+        role: 'system',
+        content: `[system-display:${cName} 更换了头像${finalDesc ? `（${finalDesc}）` : ''}]`,
+        parts: [],
+        timestamp: Date.now()
+    });
+    if (typeof saveData === 'function') await saveData();
+    if (typeof renderMessages === 'function' && typeof currentChatId !== 'undefined' && currentChatId === chat.id) {
+        renderMessages(false, true);
+    }
+    if (typeof showToast === 'function') showToast(`${cName} 更换了新头像`);
+}
+
+function openAvatarPokeModal() {
+    if (typeof currentChatType === 'undefined' || currentChatType !== 'private') {
+        if (typeof showToast === 'function') showToast('请在单人私聊中打开头像库与拍一拍设置');
+        return;
+    }
+    const chat = (db.characters || []).find(c => c.id === currentChatId);
+    if (!chat) return;
+    chat.avatarLibrary ||= [];
+    if (chat.avatar && !chat.avatarLibrary.some(item => item.url === chat.avatar)) {
+        chat.avatarLibrary.unshift({ id: 'av_init', url: chat.avatar, desc: chat.currentAvatarDesc || '当前默认头像', addedAt: Date.now() });
+    }
+    const dialog = document.createElement('dialog');
+    dialog.className = 'uwu-memory-dialog uwu-avatar-poke-dialog';
+    const cName = chat.remarkName || chat.realName || chat.name || '角色';
+
+    const drawModal = () => {
+        dialog.replaceChildren();
+        const title = document.createElement('h2');
+        title.textContent = `${cName} · 头像库与拍一拍`;
+        const hint = document.createElement('p');
+        hint.className = 'uwu-memory-guide';
+        hint.textContent = '把常用头像加入头像库并写一句简短描述；平时聊天不占 Token，提到头像或发两张图说一起换情头时，AI 会自动感知并自己换上。双击聊天室头像即可触发“拍一拍”。';
+
+        // Poke settings section
+        const pokeBox = document.createElement('div');
+        pokeBox.className = 'uwu-poke-box';
+        const myPokeLbl = document.createElement('label');
+        myPokeLbl.className = 'uwu-poke-label';
+        myPokeLbl.textContent = '我的拍一拍文案（自定义）';
+        const myPokeInput = document.createElement('input');
+        myPokeInput.type = 'text';
+        myPokeInput.value = db.myPokeText || '';
+        myPokeInput.placeholder = '例如：拍了拍我的脑袋';
+        myPokeInput.className = 'uwu-poke-input';
+        myPokeLbl.append(myPokeInput);
+
+        const aiPokeLbl = document.createElement('label');
+        aiPokeLbl.className = 'uwu-poke-label';
+        aiPokeLbl.textContent = `${cName} 的拍一拍文案（留空时 AI 下次聊天会自动设定）`;
+        const aiPokeInput = document.createElement('input');
+        aiPokeInput.type = 'text';
+        aiPokeInput.value = chat.pokeText || '';
+        aiPokeInput.placeholder = '留空让 AI 首次自动生成，也可手动填写';
+        aiPokeInput.className = 'uwu-poke-input';
+        aiPokeLbl.append(aiPokeInput);
+
+        const savePokeBtn = document.createElement('button');
+        savePokeBtn.type = 'button';
+        savePokeBtn.className = 'btn btn-primary';
+        savePokeBtn.textContent = '保存拍一拍设置';
+        savePokeBtn.onclick = async () => {
+            db.myPokeText = myPokeInput.value.trim();
+            chat.pokeText = aiPokeInput.value.trim();
+            if (typeof saveData === 'function') await saveData();
+            if (typeof showToast === 'function') showToast('拍一拍文案已保存');
+        };
+        pokeBox.append(myPokeLbl, aiPokeLbl, savePokeBtn);
+
+        // Avatar upload section
+        const addBox = document.createElement('div');
+        addBox.className = 'uwu-avatar-upload-box';
+        const addTitle = document.createElement('strong');
+        addTitle.textContent = '添加新头像到头像库';
+        addTitle.className = 'uwu-avatar-upload-title';
+        const descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.placeholder = '简短描述（如：头顶小猫情头 / 野外自拍）';
+        descInput.className = 'uwu-avatar-desc-input';
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = async () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const url = reader.result;
+                const desc = descInput.value.trim() || file.name.replace(/\.[^.]+$/, '');
+                chat.avatarLibrary.unshift({ id: 'av_' + Date.now().toString(36), url, desc, addedAt: Date.now() });
+                if (typeof saveData === 'function') await saveData();
+                drawModal();
+            };
+            reader.readAsDataURL(file);
+        };
+        addBox.append(addTitle, descInput, fileInput);
+
+        // Avatar grid
+        const grid = document.createElement('div');
+        grid.className = 'uwu-avatar-lib-grid';
+        for (const item of chat.avatarLibrary) {
+            const isCur = chat.avatar === item.url;
+            const card = document.createElement('div');
+            card.className = `uwu-avatar-lib-card${isCur ? ' is-current' : ''}`;
+            const img = document.createElement('img');
+            img.src = item.url;
+            img.alt = item.desc || '';
+            const p = document.createElement('p');
+            const coupleTag = (item.isCouple || /情头|情侣头像/i.test(item.desc || '')) ? '💑 ' : '';
+            p.textContent = (isCur ? '✓ ' : '') + coupleTag + (item.desc || '未命名头像');
+            const btns = document.createElement('div');
+            btns.className = 'uwu-av-btns';
+            if (!isCur) {
+                const useBtn = document.createElement('button');
+                useBtn.type = 'button';
+                useBtn.textContent = '使用';
+                useBtn.onclick = async () => {
+                    chat.avatar = item.url;
+                    chat.currentAvatarDesc = item.desc || '';
+                    if (typeof saveData === 'function') await saveData();
+                    if (typeof renderMessages === 'function') renderMessages(false, true);
+                    drawModal();
+                };
+                btns.append(useBtn);
+            }
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.textContent = '删';
+            delBtn.onclick = async () => {
+                chat.avatarLibrary = chat.avatarLibrary.filter(x => x.id !== item.id);
+                if (typeof saveData === 'function') await saveData();
+                drawModal();
+            };
+            btns.append(delBtn);
+            card.append(img, p, btns);
+            grid.append(card);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn btn-secondary';
+        closeBtn.textContent = '关闭';
+        closeBtn.onclick = () => dialog.close();
+        dialog.append(title, hint, pokeBox, addBox, grid, closeBtn);
+    };
+
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    drawModal();
+    document.body.append(dialog);
+    dialog.showModal();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', event => {
+        if (event.target?.closest?.('#avatar-poke-panel-btn')) {
+            openAvatarPokeModal();
+        }
+    });
+
+    // Double-tap / double-click avatar in chat room to trigger WeChat-style "拍一拍"
+    let lastTapTime = 0;
+    let lastTapEl = null;
+    document.addEventListener('click', async event => {
+        const img = event.target?.closest?.('.message-info img');
+        if (!img || typeof currentChatType === 'undefined' || currentChatType !== 'private') return;
+        const now = Date.now();
+        if (lastTapEl === img && now - lastTapTime <= 380) {
+            lastTapTime = 0;
+            lastTapEl = null;
+            event.preventDefault();
+            event.stopPropagation();
+            img.classList.remove('uwu-poke-shake');
+            void img.offsetWidth;
+            img.classList.add('uwu-poke-shake');
+
+            const chat = (db.characters || []).find(c => c.id === currentChatId);
+            if (!chat) return;
+            const wrapper = img.closest('.message-wrapper');
+            const isSelf = wrapper?.classList.contains('sent');
+            const cName = chat.remarkName || chat.realName || chat.name || '对方';
+            const displayLine = isSelf
+                ? `你${(db.myPokeText || '').trim() || '拍了拍自己'}`
+                : `你${(chat.pokeText || '').trim() || `拍了拍 ${cName}`}`;
+
+            chat.history ||= [];
+            chat.history.push({
+                id: `msg_poke_${Date.now()}`,
+                role: isSelf ? 'system' : 'user',
+                content: isSelf ? `[system-display:${displayLine}]` : `[系统动作：${displayLine}]`,
+                parts: [],
+                timestamp: Date.now()
+            });
+            if (typeof saveData === 'function') await saveData();
+            if (typeof renderMessages === 'function') renderMessages(false, true);
+            if (typeof showToast === 'function') showToast(displayLine);
+        } else {
+            lastTapTime = now;
+            lastTapEl = img;
+        }
+    }, true);
+});
+    </script>
+    <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -62126,5 +62576,6 @@ function showGlobalRescuePanel() {
             });
         }
     </script>
+    <script src="./smart-auto-reply.js"></script>
 </body>
 </html>
